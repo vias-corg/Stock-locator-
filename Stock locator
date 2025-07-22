@@ -1,7 +1,69 @@
-def locate_stock(query, df=df_stock):
+# stock_locator.py
+
+import pandas as pd
+
+def load_stock_data(file_path: str) -> pd.DataFrame:
+    xls = pd.ExcelFile(file_path)
+    df_raw = xls.parse(xls.sheet_names[0], skiprows=4)
+
+    records = []
+    current_product_code = None
+    current_description = None
+
+    for _, row in df_raw.iterrows():
+        product_code = row['Unnamed: 0']
+        description = row['Unnamed: 2']
+
+        if pd.notna(product_code) and pd.notna(description):
+            current_product_code = product_code
+            current_description = description
+            continue
+
+        if pd.isna(product_code) and pd.notna(row['Unnamed: 3']):
+            location = row['Unnamed: 0']
+            on_hand = row['Unnamed: 3']
+            bin_location = row['Unnamed: 7']
+
+            records.append({
+                "Product Code": current_product_code,
+                "Description": current_description,
+                "Location": location,
+                "On Hand": on_hand,
+                "Bin Location": bin_location
+            })
+
+    return pd.DataFrame(records)
+
+def locate_stock(df: pd.DataFrame, query: str) -> pd.DataFrame:
     query = query.lower()
-    results = df[
-        df['Product Code'].str.lower().str.contains(query) |
-        df['Description'].str.lower().str.contains(query)
-    ]
-    return results.reset_index(drop=True)
+    return df[
+        df['Product Code'].str.lower().str.contains(query, na=False) |
+        df['Description'].str.lower().str.contains(query, na=False)
+    ].reset_index(drop=True)
+
+def main():
+    file_path = 'Stock Locator - Master.xlsx'
+    try:
+        print("Loading stock data...")
+        df_stock = load_stock_data(file_path)
+        print(f"Loaded {len(df_stock)} records.")
+
+        while True:
+            query = input("\nEnter part number or keyword to search (or 'exit' to quit): ").strip()
+            if query.lower() == 'exit':
+                print("Goodbye!")
+                break
+
+            results = locate_stock(df_stock, query)
+            if not results.empty:
+                print(results.to_string(index=False))
+            else:
+                print("No matching records found.")
+
+    except FileNotFoundError:
+        print(f"Error: File not found at path '{file_path}'")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+if __name__ == '__main__':
+    main()
