@@ -1,0 +1,7 @@
+def locate_stock(query, df=df_stock):
+    query = query.lower()
+    results = df[
+        df['Product Code'].str.lower().str.contains(query) |
+        df['Description'].str.lower().str.contains(query)
+    ]
+    return results.reset_index(drop=True)
